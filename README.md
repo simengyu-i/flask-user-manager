@@ -23,7 +23,7 @@
 
 ```bash
 # 1. 安装依赖
-pip install flask
+pip install -r requirements.txt
 
 # 2. 启动服务
 python app.py
@@ -41,7 +41,11 @@ flask-user-manager/
 ├── config.example.json    # 配置示例
 ├── users.json             # 用户数据 [已 gitignore]
 ├── users.example.json     # 用户数据示例
+├── requirements.txt       # Python 依赖清单
+├── LICENSE                # MIT 开源许可证
 ├── .gitignore
+├── .github/workflows/
+│   └── python-test.yml    # CI 自动测试
 ├── static/
 │   └── css/
 │       └── style.css      # 样式文件
