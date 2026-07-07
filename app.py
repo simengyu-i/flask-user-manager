@@ -1,6 +1,7 @@
 import json
 import os
 from flask import Flask, render_template, request, redirect, session
+from werkzeug.security import check_password_hash
 
 app = Flask(__name__)
 
@@ -53,7 +54,7 @@ def login():
             return render_template("login.html", error="输入包含非法字符")
 
         user = USERS.get(username)
-        if user and user["password"] == password:
+        if user and check_password_hash(user["password"], password):
             session["username"] = username
             safe_user = get_safe_user(username)
             return render_template("index.html", user=safe_user)
