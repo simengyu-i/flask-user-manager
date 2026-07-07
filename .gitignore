@@ -9,3 +9,6 @@ nohup.out
 users.json
 config.json
 
+# 会话状态
+.local/
+

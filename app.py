@@ -19,22 +19,44 @@ port = config.get("port", 5000)
 debug = config.get("debug", True)
 
 
+def get_safe_user(username):
+    """返回不包含密码的用户信息"""
+    user = USERS.get(username)
+    if user:
+        return {k: v for k, v in user.items() if k != "password"}
+    return None
+
+
+def validate_input(value):
+    """基础输入校验：只允许字母、数字、中文、@、.、-、_"""
+    import re
+    if not value or not isinstance(value, str):
+        return False
+    return bool(re.match(r'^[a-zA-Z0-9一-鿿@.\-_]+$', value))
+
+
 @app.route("/")
 def index():
     username = session.get("username")
-    user = USERS.get(username) if username else None
+    user = get_safe_user(username) if username else None
     return render_template("index.html", user=user)
 
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        username = request.form.get("username")
-        password = request.form.get("password")
+        username = request.form.get("username", "").strip()
+        password = request.form.get("password", "")
+
+        # 输入校验
+        if not validate_input(username) or not validate_input(password):
+            return render_template("login.html", error="输入包含非法字符")
+
         user = USERS.get(username)
         if user and user["password"] == password:
             session["username"] = username
-            return render_template("index.html", user=user)
+            safe_user = get_safe_user(username)
+            return render_template("index.html", user=safe_user)
         else:
             return render_template("login.html", error="用户名或密码错误")
     return render_template("login.html")
