@@ -11,4 +11,5 @@ config.json
 
 # 会话状态
 .local/
+.claude/
 
