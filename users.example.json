@@ -1,0 +1,18 @@
+{
+    "admin": {
+        "username": "admin",
+        "password": "你的密码",
+        "role": "admin",
+        "email": "admin@example.com",
+        "phone": "13800138000",
+        "balance": 99999
+    },
+    "alice": {
+        "username": "alice",
+        "password": "你的密码",
+        "role": "user",
+        "email": "alice@example.com",
+        "phone": "13900139001",
+        "balance": 100
+    }
+}

@@ -1,0 +1,5 @@
+{
+    "secret_key": "请修改为你自己的密钥",
+    "port": 5000,
+    "debug": true
+}

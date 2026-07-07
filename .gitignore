@@ -4,3 +4,8 @@ __pycache__/
 .env
 *.log
 nohup.out
+
+# 配置文件 - 禁止提交到 Git
+users.json
+config.json
+

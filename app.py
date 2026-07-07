@@ -1,27 +1,22 @@
+import json
+import os
 from flask import Flask, render_template, request, redirect, session
 
 app = Flask(__name__)
-app.secret_key = "dev-key-2025"
 
-# 用户数据库 - 明文密码存储
-USERS = {
-    "admin": {
-        "username": "admin",
-        "password": "admin123",
-        "role": "admin",
-        "email": "admin@example.com",
-        "phone": "13800138000",
-        "balance": 99999
-    },
-    "alice": {
-        "username": "alice",
-        "password": "alice2025",
-        "role": "user",
-        "email": "alice@example.com",
-        "phone": "13900139001",
-        "balance": 100
-    }
-}
+# 从配置文件加载
+config_path = os.path.join(os.path.dirname(__file__), "config.json")
+users_path = os.path.join(os.path.dirname(__file__), "users.json")
+
+with open(config_path, encoding="utf-8") as f:
+    config = json.load(f)
+
+with open(users_path, encoding="utf-8") as f:
+    USERS = json.load(f)
+
+app.secret_key = config.get("secret_key", "dev-key-2025")
+port = config.get("port", 5000)
+debug = config.get("debug", True)
 
 
 @app.route("/")
@@ -52,4 +47,4 @@ def logout():
 
 
 if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=5000)
+    app.run(debug=debug, host="0.0.0.0", port=port)
