@@ -9,6 +9,9 @@ nohup.out
 users.json
 config.json
 
+# 上传文件
+static/uploads/
+
 # 会话状态
 .local/
 .claude/

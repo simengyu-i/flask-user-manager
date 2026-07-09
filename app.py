@@ -1,8 +1,11 @@
 import json
 import os
 import sqlite3
-from flask import Flask, render_template, request, redirect, session
+import magic
+from flask import Flask, render_template, request, redirect, session, url_for
 from werkzeug.security import check_password_hash
+from werkzeug.utils import secure_filename
+from PIL import Image
 
 app = Flask(__name__)
 
@@ -19,6 +22,12 @@ with open(users_path, encoding="utf-8") as f:
 app.secret_key = config.get("secret_key", "dev-key-2025")
 port = config.get("port", 5000)
 debug = config.get("debug", True)
+
+# ── 上传配置 ──
+app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024
+ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png', 'gif'}
+UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), "static", "uploads")
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 
 # ── 数据库初始化 ──
@@ -153,6 +162,47 @@ def search():
     username = session.get("username")
     user = get_safe_user(username) if username else None
     return render_template("index.html", user=user, results=results, keyword=keyword)
+
+
+# ── 头像上传 ──
+@app.route("/upload", methods=["GET", "POST"])
+def upload():
+    if "username" not in session:
+        return redirect("/login")
+
+    if request.method == "POST":
+        file = request.files.get("file")
+        if file and file.filename:
+            # 修复 1：secure_filename 防止路径遍历
+            filename = secure_filename(file.filename)
+
+            # 修复 2：白名单扩展名
+            if '.' not in filename or filename.rsplit('.', 1)[1].lower() not in ALLOWED_EXTENSIONS:
+                return render_template("upload.html", error="不支持的文件类型，仅允许 jpg、jpeg、png、gif")
+
+            # 修复 3：MIME 校验
+            mime = magic.from_buffer(file.read(1024), mime=True)
+            file.seek(0)
+            if mime not in ['image/jpeg', 'image/png', 'image/gif']:
+                return render_template("upload.html", error="文件 MIME 类型不匹配")
+
+            save_path = os.path.join(UPLOAD_FOLDER, filename)
+            file.save(save_path)
+
+            # 修复 4：内容二次渲染
+            try:
+                im = Image.open(save_path)
+                im.save(save_path)
+            except Exception:
+                os.remove(save_path)
+                return render_template("upload.html", error="文件内容不是有效图片")
+
+            file_url = url_for("static", filename=f"uploads/{filename}")
+            return render_template("upload.html", filename=filename, file_url=file_url)
+        else:
+            return render_template("upload.html", error="请选择一个文件")
+
+    return render_template("upload.html")
 
 
 if __name__ == "__main__":
