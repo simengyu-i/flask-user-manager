@@ -1,0 +1,27 @@
+<!-- 调试信息 - 个人中心页面 -->
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+    <h2>个人中心</h2>
+    <table class="info-table">
+        <tr><td>ID</td><td>{{ user.id }}</td></tr>
+        <tr><td>用户名</td><td>{{ user.username }}</td></tr>
+        <tr><td>邮箱</td><td>{{ user.email }}</td></tr>
+        <tr><td>手机</td><td>{{ user.phone }}</td></tr>
+        <tr><td>余额</td><td>{{ user.balance }}</td></tr>
+    </table>
+    <a href="/" class="btn" style="background:#666;">返回首页</a>
+</div>
+
+<div class="card">
+    <h3>充值</h3>
+    <form method="post" action="/recharge">
+        <input type="hidden" name="user_id" value="{{ user.id }}">
+        <div class="form-group">
+            <label for="amount">充值金额</label>
+            <input type="number" id="amount" name="amount" step="0.01" placeholder="输入金额（可正可负）" required>
+        </div>
+        <button type="submit" class="btn btn-block">确认充值</button>
+    </form>
+</div>
+{% endblock %}

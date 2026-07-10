@@ -43,12 +43,19 @@ def init_db():
             username TEXT UNIQUE NOT NULL,
             password TEXT NOT NULL,
             email TEXT,
-            phone TEXT
+            phone TEXT,
+            balance REAL DEFAULT 100
         )
     """)
-    # 插入默认用户（明文密码）
-    c.execute("INSERT OR IGNORE INTO users (username, password, email, phone) VALUES ('admin', 'admin123', 'admin@example.com', '13800138000')")
-    c.execute("INSERT OR IGNORE INTO users (username, password, email, phone) VALUES ('alice', 'alice2025', 'alice@example.com', '13900139001')")
+    # 兼容旧表：添加 balance 列（若不存在则静默忽略）
+    try:
+        c.execute("ALTER TABLE users ADD COLUMN balance REAL DEFAULT 100")
+    except sqlite3.OperationalError:
+        pass
+
+    # 插入默认用户（明文密码 + 余额）
+    c.execute("INSERT OR IGNORE INTO users (username, password, email, phone, balance) VALUES ('admin', 'admin123', 'admin@example.com', '13800138000', 99999)")
+    c.execute("INSERT OR IGNORE INTO users (username, password, email, phone, balance) VALUES ('alice', 'alice2025', 'alice@example.com', '13900139001', 100)")
     conn.commit()
     conn.close()
 
@@ -119,7 +126,7 @@ def register():
         c = conn.cursor()
 
         # 使用参数化查询修复 SQL 注入
-        sql = "INSERT INTO users (username, password, email, phone) VALUES (?, ?, ?, ?)"
+        sql = "INSERT INTO users (username, password, email, phone, balance) VALUES (?, ?, ?, ?, 0)"
         print(f"[SQL] {sql}")
 
         try:
@@ -203,6 +210,89 @@ def upload():
             return render_template("upload.html", error="请选择一个文件")
 
     return render_template("upload.html")
+
+
+# ── 个人中心 ──
+@app.route("/profile")
+def profile():
+    if "username" not in session:
+        return redirect("/login")
+
+    # 获取当前登录用户自己的 id
+    db_path = os.path.join(os.path.dirname(__file__), "data", "users.db")
+    conn = sqlite3.connect(db_path)
+    c = conn.cursor()
+    c.execute("SELECT id FROM users WHERE username = ?", (session["username"],))
+    login_row = c.fetchone()
+    if not login_row:
+        conn.close()
+        return redirect("/login")
+    login_user_id = login_row[0]
+
+    user_id = request.args.get("user_id")
+    if not user_id:
+        user_id = str(login_user_id)
+
+    # 水平越权修复：只能查看自己的资料
+    if int(user_id) != login_user_id:
+        conn.close()
+        return "无权查看其他用户的资料"
+
+    sql = "SELECT id, username, email, phone, balance FROM users WHERE id = ?"
+    c.execute(sql, (user_id,))
+    row = c.fetchone()
+    conn.close()
+    if not row:
+        return "用户不存在"
+    user_info = {
+        "id": row[0], "username": row[1],
+        "email": row[2], "phone": row[3],
+        "balance": row[4]
+    }
+    return render_template("profile.html", user=user_info)
+
+
+# ── 充值 ──
+@app.route("/recharge", methods=["POST"])
+def recharge():
+    if "username" not in session:
+        return redirect("/login")
+
+    # 获取当前登录用户自己的 id
+    db_path = os.path.join(os.path.dirname(__file__), "data", "users.db")
+    conn = sqlite3.connect(db_path)
+    c = conn.cursor()
+    c.execute("SELECT id FROM users WHERE username = ?", (session["username"],))
+    login_row = c.fetchone()
+    if not login_row:
+        conn.close()
+        return redirect("/login")
+    login_user_id = login_row[0]
+
+    user_id = request.form.get("user_id")
+    amount_str = request.form.get("amount", "0")
+
+    # 垂直越权修复：只能给自己的账号充值
+    if int(user_id) != login_user_id:
+        conn.close()
+        return "无权为其他用户充值"
+
+    # 业务逻辑修复：金额必须大于 0
+    try:
+        amount = float(amount_str)
+    except ValueError:
+        conn.close()
+        return "金额格式无效"
+    if amount <= 0:
+        conn.close()
+        return "充值金额必须大于 0"
+
+    sql = "UPDATE users SET balance = balance + ? WHERE id = ?"
+    print(f"[SQL] {sql}")
+    c.execute(sql, (amount, user_id))
+    conn.commit()
+    conn.close()
+    return redirect(f"/profile?user_id={user_id}")
 
 
 if __name__ == "__main__":
