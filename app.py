@@ -295,5 +295,41 @@ def recharge():
     return redirect(f"/profile?user_id={user_id}")
 
 
+# ── 动态页面加载(Path Traversal 修复)──
+# 修复方式:白名单 —— 只允许加载预定义页面,任何不在白名单的 name 全部拒绝
+ALLOWED_PAGES = {"help", "about", "contact", "faq"}
+
+
+@app.route("/page")
+def page():
+    name = request.args.get("name", "")
+
+    # 修复 1:白名单校验 —— 任何不在白名单的 name 直接拒绝,杜绝路径遍历
+    if name not in ALLOWED_PAGES:
+        username = session.get("username")
+        user = get_safe_user(username) if username else None
+        return render_template("index.html", user=user,
+                                page_content="页面不存在", page_not_found=True)
+
+    # 修复 2:路径拼接现在安全(name 来自白名单,只能是合法标识符)
+    base_dir = os.path.join(os.path.dirname(__file__), "pages")
+    file_path = os.path.join(base_dir, name + ".html")
+
+    if os.path.exists(file_path) and os.path.isfile(file_path):
+        with open(file_path, encoding="utf-8") as f:
+            content = f.read()
+    else:
+        content = None
+
+    username = session.get("username")
+    user = get_safe_user(username) if username else None
+
+    if content is None:
+        return render_template("index.html", user=user,
+                                page_content="页面不存在", page_not_found=True)
+    return render_template("index.html", user=user,
+                            page_content=content, page_not_found=False)
+
+
 if __name__ == "__main__":
     app.run(debug=debug, host="0.0.0.0", port=port)
