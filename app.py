@@ -19,9 +19,29 @@ with open(config_path, encoding="utf-8") as f:
 with open(users_path, encoding="utf-8") as f:
     USERS = json.load(f)
 
-app.secret_key = config.get("secret_key", "dev-key-2025")
 port = config.get("port", 5000)
 debug = config.get("debug", True)
+
+
+# ── 启动校验:拒绝弱密钥 / 占位符启动 ──
+WEAK_SECRET_KEYS = {
+    "dev-key-2025", "secret", "key", "123456",
+    "password", "admin", "flask-secret", ""
+}
+
+_secret_key = config.get("secret_key", "")
+if not _secret_key:
+    raise RuntimeError(
+        "config.json 中 secret_key 为空,\n"
+        f"请运行: python -c \"import secrets; print(secrets.token_hex(32))\" 生成强密钥"
+    )
+if _secret_key in WEAK_SECRET_KEYS or _secret_key.startswith("REPLACE_WITH"):
+    raise RuntimeError(
+        f"config.json 中 secret_key 是弱密钥或占位符({_secret_key[:20]}...),\n"
+        f"请运行: python -c \"import secrets; print(secrets.token_hex(32))\" 替换之"
+    )
+
+app.secret_key = _secret_key
 
 # ── 上传配置 ──
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024
