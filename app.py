@@ -1,9 +1,10 @@
 import json
 import os
 import sqlite3
+import secrets
 import magic
 from flask import Flask, render_template, request, redirect, session, url_for
-from werkzeug.security import check_password_hash
+from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
 from PIL import Image
 
@@ -269,7 +270,10 @@ def profile():
         "email": row[2], "phone": row[3],
         "balance": row[4]
     }
-    return render_template("profile.html", user=user_info)
+    # 生成 CSRF Token
+    session["csrf_token"] = secrets.token_hex(16)
+
+    return render_template("profile.html", user=user_info, csrf_token=session["csrf_token"])
 
 
 # ── 充值 ──

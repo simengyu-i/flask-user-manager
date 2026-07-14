@@ -9,8 +9,15 @@ nohup.out
 users.json
 config.json
 
+# 数据库文件
+data/
+
 # 上传文件
 static/uploads/
+
+# 生成的报告文件
+*.docx
+gen_*.py
 
 # 会话状态
 .local/
