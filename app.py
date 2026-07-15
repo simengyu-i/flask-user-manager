@@ -3,6 +3,8 @@ import os
 import sqlite3
 import secrets
 import magic
+import urllib.request
+import urllib.error
 from flask import Flask, render_template, request, redirect, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
@@ -353,6 +355,88 @@ def page():
                                 page_content="页面不存在", page_not_found=True)
     return render_template("index.html", user=user,
                             page_content=content, page_not_found=False)
+
+
+# ── URL 抓取 ──
+import urllib.parse
+import ipaddress
+
+# 禁止的协议
+BLOCKED_SCHEMES = {"file", "ftp", "dict", "gopher", "ldap", "smb"}
+# 私有/内网 IP 段
+PRIVATE_NETS = [
+    ipaddress.ip_network("127.0.0.0/8"),
+    ipaddress.ip_network("10.0.0.0/8"),
+    ipaddress.ip_network("172.16.0.0/12"),
+    ipaddress.ip_network("192.168.0.0/16"),
+    ipaddress.ip_network("169.254.0.0/16"),
+    ipaddress.ip_network("0.0.0.0/8"),
+    ipaddress.ip_network("::1/128"),
+    ipaddress.ip_network("fc00::/7"),
+]
+
+
+def is_private_url(url):
+    """检查 URL 目标是否为内网或禁止协议"""
+    parsed = urllib.parse.urlparse(url)
+    # 禁止非 http/https 协议
+    if parsed.scheme not in ("http", "https"):
+        return True
+    # 解析主机名
+    host = parsed.hostname
+    if not host:
+        return True
+    # 禁止 localhost 变体
+    if host in ("localhost", "localhost6"):
+        return True
+    try:
+        ip = ipaddress.ip_address(host)
+        for net in PRIVATE_NETS:
+            if ip in net:
+                return True
+    except ValueError:
+        # 不是 IP（域名），信任 DNS 解析结果但仍检查
+        pass
+    return False
+
+
+@app.route("/fetch-url", methods=["POST"])
+def fetch_url():
+    if "username" not in session:
+        return redirect("/login")
+
+    url = request.form.get("url", "").strip()
+    if not url:
+        return render_template("index.html", user=get_safe_user(session.get("username")),
+                                fetch_error="请输入 URL")
+
+    # SSRF 防护：禁止内网地址和危险协议
+    if is_private_url(url):
+        return render_template("index.html", user=get_safe_user(session.get("username")),
+                                fetch_error="禁止访问内网地址或非 http/https 协议")
+
+    result = {}
+    try:
+        req = urllib.request.Request(url)
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            result["status"] = resp.status
+            result["headers"] = dict(resp.headers)
+            content = resp.read(5000).decode("utf-8", errors="replace")
+            result["content"] = content
+            result["content_length"] = len(content)
+    except urllib.error.HTTPError as e:
+        result["error"] = f"HTTP 错误: {e.code} {e.reason}"
+    except urllib.error.URLError as e:
+        result["error"] = f"URL 错误: {e.reason}"
+    except Exception as e:
+        result["error"] = f"错误: {e}"
+
+    import sys
+    print(f"[FETCH] url={url} result={'error' if 'error' in result else 'ok'}", file=sys.stderr)
+
+    username = session.get("username")
+    user = get_safe_user(username) if username else None
+    return render_template("index.html", user=user, fetch_result=result, fetch_url=url)
 
 
 if __name__ == "__main__":
