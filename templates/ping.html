@@ -1,0 +1,24 @@
+<!-- 调试信息 - Ping 网络诊断 -->
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+    <h2>Ping 网络诊断</h2>
+    <form method="post" action="/ping">
+        <div class="form-group">
+            <label for="ip">IP 地址或域名</label>
+            <input type="text" id="ip" name="ip" placeholder="例如 8.8.8.8 或 baidu.com" value="{{ request.form.get('ip', '') }}" required>
+        </div>
+        <button type="submit" class="btn btn-block">Ping</button>
+    </form>
+
+    {% if command %}
+        <p style="font-size:12px;color:#999;margin-top:8px;">执行命令: <code>{{ command }}</code></p>
+    {% endif %}
+
+    {% if result %}
+        <hr style="margin:20px 0;">
+        <h3>执行结果</h3>
+        <pre style="background:#0a0a0a;color:#00ff41;padding:16px;border-radius:6px;font-size:12px;line-height:1.5;overflow-x:auto;border:1px solid #333;font-family:'Fira Code','Consolas',monospace;">{{ result }}</pre>
+    {% endif %}
+</div>
+{% endblock %}

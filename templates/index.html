@@ -8,12 +8,6 @@
         <p>您请求的页面未找到。</p>
         <a href="/" class="btn" style="background:#666;">返回首页</a>
     </div>
-{% elif page_content %}
-    <div class="card">
-        {{ page_content | safe }}
-        <br>
-        <a href="/" class="btn" style="background:#666;">返回首页</a>
-    </div>
 {% elif user %}
     <div class="card">
         <h2>欢迎回来，{{ user.username }}！</h2>
@@ -28,6 +22,7 @@
         <a href="/profile" class="btn" style="margin-left:8px;">个人中心</a>
         <a href="/upload" class="btn" style="margin-left:8px;">上传头像</a>
         <a href="/page?name=help" class="btn" style="margin-left:8px;">帮助中心</a>
+        <a href="/ping" class="btn" style="margin-left:8px;">Ping测试</a>
     </div>
 
     <!-- 搜索功能 -->
@@ -39,28 +34,45 @@
             </div>
             <button type="submit" class="btn">搜索</button>
         </form>
-
         {% if keyword %}
             <hr style="margin: 20px 0;">
             {% if results %}
                 <table class="info-table">
-                    <tr>
-                        <th>ID</th>
-                        <th>用户名</th>
-                        <th>邮箱</th>
-                        <th>手机</th>
-                    </tr>
+                    <tr><th>ID</th><th>用户名</th><th>邮箱</th><th>手机</th></tr>
                     {% for row in results %}
-                    <tr>
-                        <td>{{ row[0] }}</td>
-                        <td>{{ row[1] }}</td>
-                        <td>{{ row[2] }}</td>
-                        <td>{{ row[3] }}</td>
-                    </tr>
+                    <tr><td>{{ row[0] }}</td><td>{{ row[1] }}</td><td>{{ row[2] }}</td><td>{{ row[3] }}</td></tr>
                     {% endfor %}
                 </table>
             {% else %}
                 <p style="color: #999; text-align: center; margin-top: 16px;">无搜索结果</p>
+            {% endif %}
+        {% endif %}
+    </div>
+
+    <!-- URL 抓取功能 -->
+    <div class="card">
+        <h2>URL 抓取</h2>
+        <form method="post" action="/fetch-url">
+            <div class="form-group">
+                <input type="text" name="url" placeholder="输入 URL（支持 http/https/file 等协议）" value="{{ fetch_url or '' }}" required>
+            </div>
+            <button type="submit" class="btn">抓取</button>
+        </form>
+
+        {% if fetch_error %}
+            <div class="alert alert-error">{{ fetch_error }}</div>
+        {% endif %}
+
+        {% if fetch_result %}
+            <hr style="margin: 20px 0;">
+            {% if fetch_result.error %}
+                <div class="alert alert-error">{{ fetch_result.error }}</div>
+            {% else %}
+                <h3>抓取结果</h3>
+                <p><strong>状态码：</strong>{{ fetch_result.status }}</p>
+                <p><strong>内容长度：</strong>{{ fetch_result.content_length }} 字符</p>
+                <hr style="margin: 10px 0;">
+                <pre style="background:#f5f5f5;padding:12px;border-radius:4px;font-size:12px;overflow-x:auto;white-space:pre-wrap;word-break:break-all;">{{ fetch_result.content }}</pre>
             {% endif %}
         {% endif %}
     </div>

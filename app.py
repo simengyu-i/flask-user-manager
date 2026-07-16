@@ -5,6 +5,9 @@ import secrets
 import magic
 import urllib.request
 import urllib.error
+import subprocess
+import platform
+import shlex
 from flask import Flask, render_template, request, redirect, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
@@ -437,6 +440,36 @@ def fetch_url():
     username = session.get("username")
     user = get_safe_user(username) if username else None
     return render_template("index.html", user=user, fetch_result=result, fetch_url=url)
+
+
+# ── Ping 诊断 ──
+@app.route("/ping", methods=["GET", "POST"])
+def ping():
+    if "username" not in session:
+        return redirect("/login")
+
+    result = None
+    command = ""
+    if request.method == "POST":
+        ip = request.form.get("ip", "").strip()
+        if ip:
+            # 使用 shlex.quote 防止命令注入
+            safe_ip = shlex.quote(ip)
+            command = f"ping -c 3 {safe_ip}"
+            print(f"[PING] {command}")
+            try:
+                output = subprocess.check_output(command, shell=True, timeout=30, stderr=subprocess.STDOUT)
+                result = output.decode("utf-8", errors="replace")
+            except subprocess.CalledProcessError as e:
+                result = f"命令执行失败 (返回码 {e.returncode}):\n{e.output.decode('utf-8', errors='replace')}"
+            except subprocess.TimeoutExpired as e:
+                result = f"命令执行超时:\n{e.output.decode('utf-8', errors='replace') if e.output else '无输出'}"
+            except Exception as e:
+                result = f"执行错误: {e}"
+        else:
+            result = "请输入 IP 地址"
+
+    return render_template("ping.html", result=result, command=command)
 
 
 if __name__ == "__main__":
