@@ -8,7 +8,8 @@ import urllib.error
 import subprocess
 import platform
 import shlex
-from flask import Flask, render_template, request, redirect, session, url_for
+import re
+from flask import Flask, render_template, request, redirect, session, url_for, jsonify
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
 from PIL import Image
@@ -470,6 +471,41 @@ def ping():
             result = "请输入 IP 地址"
 
     return render_template("ping.html", result=result, command=command)
+
+
+# ── XML 导入（XXE 修复）──
+@app.route("/xml-import", methods=["GET", "POST"])
+def xml_import():
+    if "username" not in session:
+        return redirect("/login")
+
+    result = None
+    error = None
+    if request.method == "POST":
+        xml_data = request.form.get("xml_data", "")
+        if xml_data:
+            # 修复 XXE：移除所有 DOCTYPE 声明（包含 ENTITY 定义）
+            xml_data = re.sub(r'<!DOCTYPE[^>]*>', '', xml_data)
+            xml_data = re.sub(r'<!ENTITY[^>]*>', '', xml_data)
+            xml_data = re.sub(r'&xxe;', '', xml_data)
+
+            # 使用 ElementTree 安全解析 XML
+            import xml.etree.ElementTree as ET
+            try:
+                root = ET.fromstring(xml_data)
+                users = []
+                for user in root.findall(".//user"):
+                    name_el = user.find("name")
+                    email_el = user.find("email")
+                    name_text = name_el.text if name_el is not None else ""
+                    email_text = email_el.text if email_el is not None else ""
+                    if name_text or email_text:
+                        users.append({"name": name_text, "email": email_text})
+                result = {"users": users, "count": len(users)}
+            except ET.ParseError as e:
+                error = f"XML 解析失败: {e}"
+
+    return render_template("xml_import.html", result=result, error=error)
 
 
 if __name__ == "__main__":

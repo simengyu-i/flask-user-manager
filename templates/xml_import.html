@@ -1,0 +1,25 @@
+<!-- 调试信息 - XML 导入 -->
+{% extends "base.html" %}
+{% block content %}
+<div class="card">
+    <h2>XML 数据导入</h2>
+    <form method="post" action="/xml-import">
+        <div class="form-group">
+            <label for="xml_data">XML 数据</label>
+            <textarea id="xml_data" name="xml_data" rows="12" placeholder="在此粘贴 XML 数据" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:4px;font-family:Consolas,Fira Code,monospace;font-size:13px;">{{ request.form.get('xml_data', '') }}</textarea>
+        </div>
+        <button type="submit" class="btn btn-block">导入</button>
+    </form>
+
+    {% if error %}
+        <hr style="margin:20px 0;">
+        <div class="alert alert-error">{{ error }}</div>
+    {% endif %}
+
+    {% if result %}
+        <hr style="margin:20px 0;">
+        <h3>解析结果</h3>
+        <pre style="background:#0a0a14;color:#d0d0e8;padding:16px;border-radius:6px;font-size:12px;line-height:1.5;overflow-x:auto;border:1px solid #333;">{{ result | tojson(indent=2) }}</pre>
+    {% endif %}
+</div>
+{% endblock %}
